@@ -54,4 +54,6 @@ def get_clusters(peripherals_list = [], max_distance_between_point_and_centroid 
             cluster_list.append(current_cluster_list)
             current_cluster_list = []
 
+    # the order of elements in a list persists, so we know that the first element of every cluster is the centroid
+    # that is what will be used later in the sim
     return cluster_list

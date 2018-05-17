@@ -32,9 +32,18 @@ class Plane:
             return True
         return False
 
+    def add_peripheral(self, peripheral):
+        self.peripherals.append(peripheral)
+
+    def add_charger(self, charger):
+        self.chargers.append(charger)
+
+    def add_charging_station(self, charging_station):
+        self.charging_stations.append(charging_station)
+
 
 class Peripheral:
-    def __init__(self, x_location, y_location, plane, charge_capacity = 0, current_charge = 0):
+    def __init__(self, x_location, y_location, plane, charge_capacity=0, current_charge=0):
         # double checking that the location is available
         if plane.plane[x_location][y_location] != 0:
             raise IndexError
@@ -42,6 +51,10 @@ class Peripheral:
         self.y_location = y_location
         self.charge_capacity = charge_capacity
         self.current_charge = current_charge
+        self.plane = plane
+        # other classes inherit from here
+        if type(self) == Peripheral:
+            self.plane.add_peripheral(self)
 
     def get_location(self):
         """
@@ -58,3 +71,21 @@ class Peripheral:
     def charge_device(self, source):
         # TODO: figure out how to do this smoothly..
         pass
+
+
+class ChargingNode(Peripheral):
+    def __init__(self, x_location, y_location, plane, charge_capacity=0, current_charge=0):
+        super(Peripheral, self).__init__(x_location, y_location, plane, charge_capacity, current_charge)
+        self.plane.add_charger(self)
+
+
+class ChargingStation():
+    def __init__(self, x_location, y_location, plane):
+        # double checking that the location is available
+        if plane.plane[x_location][y_location] != 0:
+            raise IndexError
+        self.x_location = x_location
+        self.y_location = y_location
+        # we want a weak reference available here
+        self.plane = plane
+        self.plane.add_charging_station(self)
