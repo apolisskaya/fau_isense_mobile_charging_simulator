@@ -196,6 +196,8 @@ class Cluster:
         self.x_location, self.y_location = self.peripheral_list[0].get_location()
         # we assume that all clusters must be in the same plane for now
         self.plane = self.peripheral_list[0].get_plane()
+        from Services import simulation_services
+        self.shortest_path_through_cluster = simulation_services.traveling_salesman(self)
 
         # TODO: to get the diameter we need the maximum distance between any two points in the cluster
 
