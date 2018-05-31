@@ -62,6 +62,10 @@ def held_karp(distance_matrix):
     if type(number_of_nodes) is not int:
         raise TypeError('Distance matrix is incorrectly formed. Check your input and try again.')
 
+    # if we only have one node, no need for all this
+    if number_of_nodes == 1:
+        return 0, [0]
+
     C = {}
 
     for k in range(1, number_of_nodes):
@@ -84,6 +88,7 @@ def held_karp(distance_matrix):
 
     bits = (2**number_of_nodes - 1) - 1
     res = []
+
     for k in range(1, number_of_nodes):
         res.append((C[(bits, k)][0] + distance_matrix[k][0], k))
     opt, parent = min(res)

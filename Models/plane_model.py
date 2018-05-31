@@ -154,6 +154,10 @@ class ChargingNode(Peripheral):
         super(Peripheral, self).__init__(x_location, y_location, plane, charge_capacity, current_charge)
         self.plane.add_charger(self)
 
+    def charge_self(self):
+        # TODO: this needs to be altered to allow for partial charges between trips maybe?
+        self.current_charge = self.charge_capacity
+
     def charge_peripheral(self, peripheral, amount):
         """
         charges peripheral device and removes that charge from the charger
@@ -193,7 +197,11 @@ class Cluster:
         self.id = id
         self.peripheral_list = peripheral_list
         self.size = len(peripheral_list)
-        self.x_location, self.y_location = self.peripheral_list[0].get_location()
+        if self.size > 0:
+            self.x_location, self.y_location = self.peripheral_list[0].get_location()
+        else:
+            self.x_location = 0
+            self.y_location = 0
         # we assume that all clusters must be in the same plane for now
         self.plane = self.peripheral_list[0].get_plane()
         from Services import simulation_services
