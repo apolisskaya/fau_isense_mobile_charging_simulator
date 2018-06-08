@@ -6,9 +6,8 @@ from Services.simulation_services import *
 from Models.plane_model import *
 
 if __name__ == "__main__":
-    print("Updating requirements . . .")
     rs.run_requirement_check()
-    pretty_print("All done! Welcome to the FAU I-SENSE Mobile Charging Simulator.", 'blue')
+    pretty_print("Welcome to the FAU I-SENSE Mobile Charging Simulator.", 'blue')
 
     """
     To start let us assume that it takes one millisecond to travel one distance unit
@@ -24,6 +23,12 @@ if __name__ == "__main__":
     p1 = Peripheral(2, 4, plane)
     p2 = Peripheral(1, 6, plane)
     p3 = Peripheral(8, 11, plane)
+    p4 = Peripheral(8, 10, plane)
 
-    clusters = plane.generate_clusters([p1, p2, p3], 2)
-    print(clusters)
+    # add a charging station and a charging node
+    charging_station_1 = ChargingStation(1, 0, plane)
+    c1 = ChargingNode(0, 0, plane)
+
+    clusters = plane.generate_clusters([p1, p2, p3, p4], 2)
+    for cluster in clusters:
+        pretty_print(cluster.peripheral_list, "purple")

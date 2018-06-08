@@ -12,6 +12,7 @@ def install_and_upgrade(requirement):
 
 def run_requirement_check():
     with open('requirements.txt') as f:
+        print("Updating requirements . . .")
         requirement_list = f.readlines()
         for r in requirement_list:
             if len(r) > 0:

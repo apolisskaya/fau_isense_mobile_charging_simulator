@@ -64,6 +64,7 @@ class Plane:
         current_cluster_list = []
         centroid_location_x = 0
         centroid_location_y = 0
+        id = 0
         # clear previous cluster list, if one exists
         if not self.cluster_list:
             self.cluster_list = None
@@ -77,6 +78,9 @@ class Plane:
                 centroid_set = True
                 current_cluster_list.append(centroid)
                 centroid_location_x, centroid_location_y = centroid.get_location()
+                # we just removed the last peripheral, no need to check for adjacent points
+                if len(peripherals_list) == 0:
+                    cluster_list.append(Cluster(peripheral_list=current_cluster_list, id=id))
             else:
                 from Services.simulation_services import get_distance_between
                 # centroid already set, we want all points within the allowed distance from it
@@ -85,17 +89,20 @@ class Plane:
                     if get_distance_between(location_1=(centroid_location_x, centroid_location_y),
                                             location_2=(p_x, p_y)) \
                             <= max_distance_between_point_and_centroid:
-                        p = peripherals_list.pop(peripheral)
+                        p = peripherals_list.pop(peripherals_list.index(peripheral))
                         current_cluster_list.append(p)
 
-                cluster_list.append(Cluster(peripheral_list=current_cluster_list, id=len(cluster_list)))
+                cluster_list.append(Cluster(peripheral_list=current_cluster_list, id=id))
+                id += 1
                 current_cluster_list = []
+                centroid_set = False
 
         # update the model with the new cluster list
         self.cluster_list = cluster_list
 
         # the order of elements in a list persists, so we know that the first element of every cluster is the centroid
         # that is what will be used later in the sim
+
         return cluster_list
 
     def get_cluster_by_id(self, cluster_id):
@@ -151,7 +158,12 @@ class Peripheral:
 
 class ChargingNode(Peripheral):
     def __init__(self, x_location, y_location, plane, charge_capacity=0, current_charge=0):
-        super(Peripheral, self).__init__(x_location, y_location, plane, charge_capacity, current_charge)
+        super(Peripheral, self).__init__()
+        self.x_location = x_location
+        self.y_location = y_location
+        self.plane = plane
+        self.charge_capacity = charge_capacity
+        self.current_charge = current_charge
         self.plane.add_charger(self)
 
     def charge_self(self):
