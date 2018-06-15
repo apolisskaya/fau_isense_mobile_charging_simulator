@@ -262,8 +262,8 @@ class Cluster:
         from Services import simulation_services
         self.length_of_shortest_path, self.shortest_path_through_cluster = \
             simulation_services.traveling_salesman(self)
-
-        # TODO: to get the diameter we need the maximum distance between any two points in the cluster
+        self.dedicated_charger = None  # used in experimental multi charger algorithm
+        self.diameter = max(max(row) for row in simulation_services.get_distance_matrix(self))
 
     def get_location(self):
         return self.x_location, self.y_location
@@ -276,3 +276,6 @@ class Cluster:
 
     def get_id(self):
         return self.id
+
+    def set_dedicated_chareger(self, charger):
+        self.dedicated_charger = charger
