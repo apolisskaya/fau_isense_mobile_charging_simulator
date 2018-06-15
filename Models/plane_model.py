@@ -188,6 +188,46 @@ class ChargingNode(Peripheral):
         self.current_charge -= amount
         peripheral.current_charge += amount
 
+    def charge_cluster(self, cluster):
+        travel_energy_used = 0
+        transfer_energy_used = 0
+
+        # first we deduct the energy to travel to the cluster
+        from Services.simulation_services import get_distance_between
+        amount_needed_to_travel_to_cluster = get_distance_between(location_1=(self.x_location, self.y_location),
+                                                                  location_2=(cluster.x_location, cluster.y_location))
+        self.current_charge -= amount_needed_to_travel_to_cluster
+        travel_energy_used += amount_needed_to_travel_to_cluster
+
+        # for now assume charger travels to all peripherals regardless of whether or not it charges them
+        self.current_charge -= cluster.length_of_shortest_path
+        travel_energy_used += cluster.length_of_shortest_path
+
+        final_peripheral_in_cluster = cluster.peripheral_list[cluster.shortest_path_through_cluster[-1]]
+        amount_needed_to_return_home = get_distance_between(location_1=(final_peripheral_in_cluster.x_location,
+                                                                        final_peripheral_in_cluster.y_location),
+                                                            location_2=(self.x_location, self.y_location))
+
+        # now we charge the peripherals along the shortest path
+        for peripheral_index in cluster.shortest_path_through_cluster:
+            peripheral = cluster.peripheral_list[peripheral_index]
+            amount_of_charge_needed = peripheral.charge_capacity - peripheral.current_charge
+            charge_available = self.current_charge - amount_needed_to_return_home
+            if charge_available > amount_of_charge_needed:
+                self.charge_peripheral(peripheral=peripheral, amount=amount_of_charge_needed)
+                transfer_energy_used += amount_of_charge_needed
+            else:
+                self.charge_peripheral(peripheral=peripheral, amount=charge_available)
+                transfer_energy_used += charge_available
+                # TODO: need to log that this charge cycle wasn't completed, failed result
+                break
+
+        # charger goes back home now
+        self.current_charge -= amount_needed_to_return_home
+        travel_energy_used += amount_needed_to_return_home
+
+        return travel_energy_used, transfer_energy_used
+
 
 class ChargingStation:
     def __init__(self, x_location, y_location, plane):

@@ -2,7 +2,6 @@ from random import randint
 from itertools import cycle
 
 from Models.plane_model import *
-from Services import simulation_services as ss
 
 ORIGIN = (0, 0)
 PLANE_HEIGHT = 20
@@ -10,14 +9,17 @@ PLANE_WIDTH = 20
 MIDDLE = (PLANE_HEIGHT/2, PLANE_WIDTH/2)
 NUMBER_OF_PERIPHERALS = 15
 LOCATION_OF_CHARGING_STATION = ORIGIN  # the other option is to set it to the middle of the plane
+PERIPHERAL_ENERGY_LOSS_MULTIPLIER = 0.5  # how fast peripherals lose energy per time unit
 
 
 # go through each cluster one at a time, charging each node in the cluster, then return home
 def single_charger_simulation():
-
     # initialize the plane
     plane = Plane(PLANE_HEIGHT, PLANE_WIDTH)
     peripherals = []
+    travel_energy_used = 0
+    transfer_energy_used = 0
+    total_energy_used = 0
 
     # add a single charging station and charging node
     charging_station = ChargingStation(LOCATION_OF_CHARGING_STATION[0], LOCATION_OF_CHARGING_STATION[1], plane)
@@ -44,6 +46,19 @@ def single_charger_simulation():
     while True:
         for cluster in cycle(clusters):
             # assume that it takes 1 point of energy per unit traveled
-            print(cluster.shortest_path_through_cluster)
+            travel_energy_used_this_cycle, transfer_energy_used_this_cycle = charger.charge_cluster(cluster)
+
+            # log the amount of energy used
+            travel_energy_used += travel_energy_used_this_cycle
+            transfer_energy_used += transfer_energy_used_this_cycle
+            total_energy_used += transfer_energy_used_this_cycle + travel_energy_used_this_cycle
+
+            # recharge the charger, decrement the amount of charge held by all devices
+            amount_needed_to_replenish = charger.charge_capacity - charger.current_charge
+            charger.charge_self()
+            for peripheral in plane.peripherals:
+                peripheral.current_charge -= (amount_needed_to_replenish * PERIPHERAL_ENERGY_LOSS_MULTIPLIER)
+
+
 
 single_charger_simulation()
