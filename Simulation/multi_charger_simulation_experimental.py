@@ -59,35 +59,46 @@ def multi_charger_simulation_experimental():
     # cycle through clusters one at a time, return home, charge, go on to the next cluster
     while True:
         for cluster in cycle(clusters):
+
             dedicated_charger = cluster.dedicated_charger
             charge_needed = dedicated_charger.get_charge_needed()
             distance_to_travel = 2 * simulation_services.get_distance_between(charger.get_location(),
                                                                              dedicated_charger.get_location())
-            dedicated_charger -= distance_to_travel
+            dedicated_charger.current_charge -= distance_to_travel
+
+            # decrement energy of all peripherals
+            for p in peripherals:
+                p.current_charge -= distance_to_travel * PERIPHERAL_ENERGY_LOSS_MULTIPLIER
+
             travel_energy_used += distance_to_travel
+            total_energy_used += distance_to_travel
             charge_available = charger.current_charge
 
             # charge the dedicated charger either to full, or as much as possible
             amount_to_charge = min(charge_needed, charge_available)
             charger.charge_peripheral(dedicated_charger, amount_to_charge)
             transfer_energy_used += amount_to_charge
+            total_energy_used += amount_to_charge
 
-            # TODO: finish from here, the rest should be edited/removed/replaced
+            # we want to decrement the length of the path from the dedicated charger first
+            dedicated_charger.current_charge -= cluster.length_of_shortest_path
+            # this was originally considered transfer energy but it's now travel energy
+            travel_energy_used += cluster.length_of_shortest_path
+            transfer_energy_used -= cluster.length_of_shortest_path
 
-            # assume that it takes 1 point of energy per unit traveled
-            travel_energy_used_this_cycle, transfer_energy_used_this_cycle = charger.charge_cluster(cluster)
-
-            # log the amount of energy used
-            travel_energy_used += travel_energy_used_this_cycle
-            transfer_energy_used += transfer_energy_used_this_cycle
-            total_energy_used += transfer_energy_used_this_cycle + travel_energy_used_this_cycle
+            # dedicated charger now charges the cluster
+            # the transfer energy was already counted as such during the dedicated charger recharge. no need to track.
+            for peripheral_index in cluster.shortest_path_through_cluster:
+                peripheral = cluster.peripheral_list[peripheral_index]
+                amount_of_charge_needed = peripheral.charge_capacity - peripheral.current_charge
+                charge_available = dedicated_charger.current_charge
+                amount_to_charge = min(amount_of_charge_needed, charge_available)
+                dedicated_charger.charge_peripheral(peripheral=peripheral, amount=amount_to_charge)
 
             # recharge the charger, decrement the amount of charge held by all devices
             amount_needed_to_replenish = charger.charge_capacity - charger.current_charge
             charger.charge_self()
-            for peripheral in plane.peripherals:
+            for peripheral in peripherals:
                 peripheral.current_charge -= (amount_needed_to_replenish * PERIPHERAL_ENERGY_LOSS_MULTIPLIER)
-
-
 
 multi_charger_simulation_experimental()

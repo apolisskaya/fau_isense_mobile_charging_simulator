@@ -191,6 +191,7 @@ class ChargingNode(Peripheral):
         self.current_charge -= amount
         peripheral.current_charge += amount
 
+    # TODO: break up this monolothic code
     def charge_cluster(self, cluster):
         from Simulation.single_charger_simulation import PERIPHERAL_ENERGY_LOSS_MULTIPLIER
 

@@ -56,9 +56,10 @@ def single_charger_simulation():
             # recharge the charger, decrement the amount of charge held by all devices
             amount_needed_to_replenish = charger.charge_capacity - charger.current_charge
             charger.charge_self()
+
+            # decrement energy of all peripherals while charging
             for peripheral in plane.peripherals:
                 peripheral.current_charge -= (amount_needed_to_replenish * PERIPHERAL_ENERGY_LOSS_MULTIPLIER)
-
 
 
 single_charger_simulation()
