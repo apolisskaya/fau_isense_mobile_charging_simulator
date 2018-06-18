@@ -2,8 +2,8 @@
 
 from Services import requirements_service as rs
 from Services.format_service import pretty_print
-from Services.simulation_services import *
-from Models.plane_model import *
+import Simulation
+from Analytics.basic_analysis import *
 
 if __name__ == "__main__":
     rs.run_requirement_check()
@@ -15,3 +15,9 @@ if __name__ == "__main__":
     # 3. length of time the sim is able to continue. let's say that if it runs in a stable manner for 5 minutes,
     # it works as intended.
 
+    single_charger_simulation = Simulation.single_charger_simulation.single_charger_simulation().\
+        run_analytics_on_simulation()
+    multi_charger_simulation = Simulation.multi_charger_simulation_experimental.\
+        multi_charger_simulation_experimental().run_analytics_on_simulation()
+
+    # we should now have the analytics available in these two variables for recording/display

@@ -19,4 +19,3 @@ def average_charge_percentage(peripherals_list):
     total_sum_of_percentages = sum([peripheral.charge_capacity - peripheral.current_charge
                                     for peripheral in peripherals_list])
     return total_sum_of_percentages / number_of_peripherals
-

@@ -23,6 +23,7 @@ def single_charger_simulation():
     transfer_energy_used = 0
     total_energy_used = 0
     cycles = 0
+    start_time = datetime.datetime.now()
 
     # add a single charging station and charging node
     charging_station = ChargingStation(LOCATION_OF_CHARGING_STATION[0], LOCATION_OF_CHARGING_STATION[1], plane)
@@ -76,3 +77,15 @@ def single_charger_simulation():
         if cycles == 15:
             # shallow copy of the list at 15 minutes
             simulation.peripheral_list_after_15_cycles = peripherals[:]
+            simulation.calculate_average_charge_at_15_cycles()
+
+        # stop running the sim at 5 minutes
+        if datetime.datetime.now() - start_time >= datetime.timedelta(minutes=5):
+            break
+
+    # record energy used
+    simulation.total_energy_used = total_energy_used
+    simulation.transfer_energy_used = transfer_energy_used
+    simulation.travel_energy_used = travel_energy_used
+
+    return simulation
