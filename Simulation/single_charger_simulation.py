@@ -1,7 +1,9 @@
 from random import randint
 from itertools import cycle
+import datetime
 
 from Models.plane_model import *
+from Models.simulation_model import Simulation
 
 ORIGIN = (0, 0)
 PLANE_HEIGHT = 20
@@ -20,6 +22,7 @@ def single_charger_simulation():
     travel_energy_used = 0
     transfer_energy_used = 0
     total_energy_used = 0
+    cycles = 0
 
     # add a single charging station and charging node
     charging_station = ChargingStation(LOCATION_OF_CHARGING_STATION[0], LOCATION_OF_CHARGING_STATION[1], plane)
@@ -35,6 +38,9 @@ def single_charger_simulation():
         # IndexError indicates that the location is occupied. Just allow and try again
         except IndexError:
             pass
+
+    # instantiate simulation object for analysis purposes
+    simulation = Simulation(peripherals)
 
     # generate clusters
     # TODO: calculate the max allowable distance here
@@ -61,5 +67,12 @@ def single_charger_simulation():
             for peripheral in plane.peripherals:
                 peripheral.current_charge -= (amount_needed_to_replenish * PERIPHERAL_ENERGY_LOSS_MULTIPLIER)
 
+                # check whether any peripherals are dead, one at a time
+                if peripheral.current_charge <= 0:
+                    simulation.peripheral_failure(peripheral_list_index=peripherals.index(peripheral),
+                                                  timestamp=datetime.datetime.now())
 
-single_charger_simulation()
+        cycles += 1
+        if cycles == 15:
+            # shallow copy of the list at 15 minutes
+            simulation.peripheral_list_after_15_cycles = peripherals[:]
