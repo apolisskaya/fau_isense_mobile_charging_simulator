@@ -147,6 +147,9 @@ class Peripheral:
     def get_charge_capacity(self):
         return self.charge_capacity
 
+    def get_charge_needed(self):
+        return self.charge_capacity - self.current_charge
+
     def charge_device(self, source, amount):
         """
         execute a call to charge_peripheral method of charging node class
@@ -189,8 +192,11 @@ class ChargingNode(Peripheral):
         peripheral.current_charge += amount
 
     def charge_cluster(self, cluster):
+        from Simulation.single_charger_simulation import PERIPHERAL_ENERGY_LOSS_MULTIPLIER
+
         travel_energy_used = 0
         transfer_energy_used = 0
+        all_peripherals = cluster.plane.peripherals
 
         # first we deduct the energy to travel to the cluster
         from Services.simulation_services import get_distance_between
@@ -198,6 +204,10 @@ class ChargingNode(Peripheral):
                                                                   location_2=(cluster.x_location, cluster.y_location))
         self.current_charge -= amount_needed_to_travel_to_cluster
         travel_energy_used += amount_needed_to_travel_to_cluster
+
+        # all peripherals in the plane lose charge during initial travel time
+        for peripheral in all_peripherals:
+            peripheral.current_charge -= (amount_needed_to_travel_to_cluster * PERIPHERAL_ENERGY_LOSS_MULTIPLIER)
 
         # for now assume charger travels to all peripherals regardless of whether or not it charges them
         self.current_charge -= cluster.length_of_shortest_path
@@ -213,18 +223,26 @@ class ChargingNode(Peripheral):
             peripheral = cluster.peripheral_list[peripheral_index]
             amount_of_charge_needed = peripheral.charge_capacity - peripheral.current_charge
             charge_available = self.current_charge - amount_needed_to_return_home
-            if charge_available > amount_of_charge_needed:
-                self.charge_peripheral(peripheral=peripheral, amount=amount_of_charge_needed)
-                transfer_energy_used += amount_of_charge_needed
-            else:
-                self.charge_peripheral(peripheral=peripheral, amount=charge_available)
-                transfer_energy_used += charge_available
-                # TODO: need to log that this charge cycle wasn't completed, failed result
+
+            amount_to_charge = min(amount_of_charge_needed, charge_available)
+            self.charge_peripheral(peripheral=peripheral, amount=amount_to_charge)
+
+            # while charging, decrement all other peripherals but not the one being charged TODO: decrement all??
+            for p in all_peripherals:
+                if p is not peripheral:
+                    p.current_charge -= (amount_to_charge * PERIPHERAL_ENERGY_LOSS_MULTIPLIER)
+
+            transfer_energy_used += amount_to_charge
+            if self.current_charge == amount_needed_to_return_home:
                 break
 
         # charger goes back home now
         self.current_charge -= amount_needed_to_return_home
         travel_energy_used += amount_needed_to_return_home
+
+        # all peripherals in the plane lose charge during this time
+        for peripheral in all_peripherals:
+            peripheral.current_charge -= (amount_needed_to_return_home * PERIPHERAL_ENERGY_LOSS_MULTIPLIER)
 
         return travel_energy_used, transfer_energy_used
 
@@ -277,5 +295,5 @@ class Cluster:
     def get_id(self):
         return self.id
 
-    def set_dedicated_chareger(self, charger):
+    def set_dedicated_charger(self, charger):
         self.dedicated_charger = charger

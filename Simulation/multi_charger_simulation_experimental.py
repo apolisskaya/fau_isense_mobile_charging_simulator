@@ -49,16 +49,28 @@ def multi_charger_simulation_experimental():
         dedicated_charger = ChargingNode(plane=plane, x_location=cluster.x_location,
                                          y_location=cluster.y_location, charge_capacity=60,
                                          current_charge=60)
-        cluster.set_dedicated_chareger(dedicated_charger)
+        cluster.set_dedicated_charger(dedicated_charger)
         dedicated_charger_list.append(dedicated_charger)
 
     # grab the shortest hamiltonian path through the clusters if we need it
-    length_of_path, shortest_path_through_clusters = \
+    length_of_path_through_clusters, shortest_path_through_clusters = \
         simulation_services.traveling_salesman(Cluster(id=-1, peripheral_list=dedicated_charger_list))
 
     # cycle through clusters one at a time, return home, charge, go on to the next cluster
     while True:
         for cluster in cycle(clusters):
+            dedicated_charger = cluster.dedicated_charger
+            charge_needed = dedicated_charger.get_charge_needed()
+            distance_to_travel = 2 * simulation_services.get_distance_between(charger.get_location(),
+                                                                             dedicated_charger.get_location())
+            dedicated_charger -= distance_to_travel
+            travel_energy_used += distance_to_travel
+            charge_available = charger.current_charge
+
+            # charge the dedicated charger either to full, or as much as possible
+            amount_to_charge = min(charge_needed, charge_available)
+            charger.charge_peripheral(dedicated_charger, amount_to_charge)
+            transfer_energy_used += amount_to_charge
 
             # TODO: finish from here, the rest should be edited/removed/replaced
 
