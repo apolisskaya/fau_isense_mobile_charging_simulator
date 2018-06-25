@@ -106,6 +106,11 @@ class Plane:
         # the order of elements in a list persists, so we know that the first element of every cluster is the centroid
         # that is what will be used later in the sim
 
+        # add back the peripherals
+        for cluster in cluster_list:
+            for peripheral in cluster.peripheral_list:
+                peripherals_list.append(peripheral)
+
         return cluster_list
 
     def get_cluster_by_id(self, cluster_id):
@@ -183,9 +188,9 @@ class ChargingNode(Peripheral):
         :param peripheral: the peripheral being charged
         :param amount: the amount of energy being transferred
         """
-        if type(peripheral) is not Peripheral:
+        if not isinstance(peripheral, Peripheral):
             raise TypeError
-        if type(amount) is not float or int:
+        if not isinstance(amount, (float, int)):
             raise TypeError
 
         self.current_charge -= amount
