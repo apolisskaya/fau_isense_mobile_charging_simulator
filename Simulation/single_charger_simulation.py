@@ -26,6 +26,7 @@ class SingleChargerSim:
         total_energy_used = 0
         cycles = 0
         start_time = datetime.datetime.now()
+        running_sim = True
 
         # add a single charging station and charging node
         charging_station = ChargingStation(LOCATION_OF_CHARGING_STATION[0], LOCATION_OF_CHARGING_STATION[1], plane)
@@ -52,7 +53,7 @@ class SingleChargerSim:
                                            max_distance_between_point_and_centroid=maximum_cluster_radius)
 
         # cycle through clusters one at a time, return home, charge, go on to the next cluster
-        while True:
+        while running_sim:
             for cluster in cycle(clusters):
                 # assume that it takes 1 point of energy per unit traveled
                 travel_energy_used_this_cycle, transfer_energy_used_this_cycle = charger.charge_cluster(cluster)
@@ -83,8 +84,7 @@ class SingleChargerSim:
 
                 # stop running the sim at 5 minutes
                 if datetime.datetime.now() - start_time >= datetime.timedelta(minutes=5):
-                    print('we out hereeeeeeeee')
-                    break
+                    running_sim = False
 
         # record energy used
         simulation.total_energy_used = total_energy_used
