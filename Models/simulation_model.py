@@ -28,9 +28,10 @@ class Simulation:
         self.time_of_peripheral_failures[peripheral] = timestamp
         # this peripheral will no longer be charged
         # TODO: should it be?
+        if peripheral.charge_capacity > 0:
+            self.peripheral_failure_count += 1
         peripheral.current_charge = 0
         peripheral.charge_capacity = 0
-        self.peripheral_failure_count += 1
 
         # track how long the algorithm runs before a failure occurs
         self.time_until_earliest_failure = timestamp - self.start_time
@@ -54,6 +55,15 @@ class Simulation:
             raise AssertionError('Please check code. Travel and Total energy in Simulation class referenced '
                                  'before assignment.')
 
+    def set_peripheral_failure_count(self):
+        total_number_of_peripherals = len(self.peripheral_list)
+        failed_peripherals = 0
+        for peripheral in self.peripheral_list:
+            if peripheral.current_charge <= 0:
+                failed_peripherals += 1
+
+        return (failed_peripherals / total_number_of_peripherals)
+
     def run_analytics_on_simulation(self):
         """
         Run analysis on the results and store in the appropriate variable
@@ -65,3 +75,15 @@ class Simulation:
         if self.time_of_earliest_failute:
             pretty_print('At least one peripheral failed within the 5 minute window. Algorithm may be ineffective.',
                          'red')
+
+        print('Effective Energy Percentage: ', self.effective_energy_percentage)
+        print('Ineffective Energy Percentage: ', self.ineffective_energy_percentage)
+        print('Average Charge at 15 Cycles: ', self.average_charge_at_15_cycles)
+        if self.time_of_earliest_failute:
+            print('Running Time Until Peripheral Failure: ', self.time_of_earliest_failute - self.start_time)
+        total_number_of_peripherals = len(self.peripheral_list)
+        failed_peripherals = 0
+        for peripheral in self.peripheral_list:
+            if peripheral.current_charge <= 0:
+                failed_peripherals += 1
+        print('Failed Peripherals: ', failed_peripherals / total_number_of_peripherals)

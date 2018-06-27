@@ -198,7 +198,8 @@ class ChargingNode(Peripheral):
 
     # TODO: break up this monolothic code
     def charge_cluster(self, cluster):
-        from Simulation.single_charger_simulation import PERIPHERAL_ENERGY_LOSS_MULTIPLIER
+        from Simulation.single_charger_simulation import SingleChargerSim
+        PERIPHERAL_ENERGY_LOSS_MULTIPLIER = SingleChargerSim.PERIPHERAL_ENERGY_LOSS_MULTIPLIER
 
         travel_energy_used = 0
         transfer_energy_used = 0
