@@ -136,7 +136,7 @@ class SingleChargerSim:
 
         # generate clusters
         maximum_cluster_radius = 5
-        self.plane.generate_clusters(peripherals_list=self.peripherals,
+        clusters = self.plane.generate_clusters(peripherals_list=self.peripherals,
                                                 max_distance_between_point_and_centroid=maximum_cluster_radius)
 
         # calculate the percentage threshold for each peripheral and assign it to the peripheral
@@ -161,6 +161,20 @@ class SingleChargerSim:
                 travel_energy_used_this_cycle, transfer_energy_used_this_cycle = \
                     charger.charge_cluster(cluster_to_charge)
 
+                # recharge the charger and decrement all peripherals
+                amount_needed_to_replenish = charger.charge_capacity - charger.current_charge
+                charger.charge_self()
+
+                # decrement energy of all peripherals while charging
+                for peripheral in self.peripherals:
+                    peripheral.current_charge -= (amount_needed_to_replenish *
+                                                  SingleChargerSim.PERIPHERAL_ENERGY_LOSS_MULTIPLIER)
+
+                    # check whether any peripherals are dead, one at a time
+                    if peripheral.current_charge <= 0:
+                        simulation.peripheral_failure(peripheral_list_index=self.peripherals.index(peripheral),
+                                                      timestamp=datetime.datetime.now())
+
                 # remove all nodes in the cluster from the queue
                 charging_queue = deque(peripheral for peripheral in charging_queue if peripheral not in
                                        cluster_to_charge.peripheral_list)
@@ -170,10 +184,21 @@ class SingleChargerSim:
                 self.transfer_energy_used += transfer_energy_used_this_cycle
                 self.total_energy_used += (transfer_energy_used_this_cycle + travel_energy_used_this_cycle)
 
+                self.cycles += 1
+                if self.cycles == 15 * len(clusters):
+                    # shallow copy of the list at 15 minutes
+                    simulation.peripheral_list_after_15_cycles = self.peripherals[:]
+                    simulation.calculate_average_charge_at_15_cycles()
+
             # If no peripherals are below the threshold, we wait one time unit (decrement all by 1)
             else:
                 for peripheral in self.peripherals:
                     peripheral.current_charge -= 1
+
+            # stop running the sim at 5 minutes
+            if datetime.datetime.now() - self.start_time >= datetime.timedelta(minutes=5):
+                self.running_sim = False
+                break
 
         # run analytics
         simulation.run_analytics_on_simulation()
