@@ -16,6 +16,9 @@ def calculate_ineffective_energy_percentage(travel_energy_used, total_energy_use
 
 def average_charge_percentage(peripherals_list):
     number_of_peripherals = len(peripherals_list)
-    total_sum_of_percentages = sum([peripheral.charge_capacity - peripheral.current_charge
+    if number_of_peripherals < 1:
+        print('No peripherals found in peripherals list. Check code for errors.')
+        raise AssertionError
+    total_sum_of_percentages = sum([peripheral.current_charge
                                     for peripheral in peripherals_list])
     return total_sum_of_percentages / number_of_peripherals

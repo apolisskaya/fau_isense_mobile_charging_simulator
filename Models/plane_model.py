@@ -109,6 +109,7 @@ class Plane:
         # add back the peripherals
         for cluster in cluster_list:
             for peripheral in cluster.peripheral_list:
+                peripheral.cluster = cluster
                 peripherals_list.append(peripheral)
 
         return cluster_list
@@ -139,6 +140,8 @@ class Peripheral:
         # other classes inherit from here
         if type(self) == Peripheral:
             self.plane.add_peripheral(self)
+        self.charge_threshold = None
+        self.cluster = None
 
     def get_location(self):
         """
@@ -165,6 +168,16 @@ class Peripheral:
 
     def get_plane(self):
         return self.plane
+
+    def set_charge_threshold(self, percentage):
+        """
+        Calculates the charge value at which a signal to charge the peripheral is transmitted
+        Assigns that value to self.charge_threshold
+
+        :param percentage: The percentage of the total charge that a peripheral needs to fall below for transmission
+            This value can range from 0 to 100
+        """
+        self.charge_threshold = percentage / 100 * self.charge_capacity
 
 
 class ChargingNode(Peripheral):

@@ -1,6 +1,7 @@
 from random import randint
 from itertools import cycle
 import datetime
+from collections import deque
 
 from Models.plane_model import *
 from Models.simulation_model import Simulation
@@ -103,3 +104,76 @@ class SingleChargerSim:
         simulation.travel_energy_used = self.travel_energy_used
 
         return simulation
+
+    def single_charger_simulation_with_communication(self, charge_percentage_threshold):
+        """
+        A variation of the single charger paradigm where peripherals are able to transmit signals to the charger
+        when they require more energy
+
+        :param charge_percentage_threshold: some value between 0 and 100 at which the signal transmission is triggered
+        :return: The simulation object
+        """
+
+        # add a single charging station and charging node
+        charging_station = ChargingStation(SingleChargerSim.LOCATION_OF_CHARGING_STATION[0],
+                                           SingleChargerSim.LOCATION_OF_CHARGING_STATION[1], self.plane)
+        charger = ChargingNode(SingleChargerSim.LOCATION_OF_CHARGING_STATION[0],
+                               SingleChargerSim.LOCATION_OF_CHARGING_STATION[1] + 1, self.plane,
+                               charge_capacity=60, current_charge=60)
+
+        # add a series of peripherals at random locations
+        while self.plane.get_number_of_peripherals() < SingleChargerSim.NUMBER_OF_PERIPHERALS:
+            try:
+                capacity = randint(10, 30)
+                self.peripherals.append(Peripheral(randint(1, 20), randint(2, 20), self.plane, charge_capacity=capacity,
+                                                   current_charge=capacity))
+            # IndexError indicates that the location is occupied. Just allow and try again
+            except IndexError:
+                pass
+
+        # instantiate simulation object for analysis purposes
+        simulation = Simulation(self.peripherals)
+
+        # generate clusters
+        maximum_cluster_radius = 5
+        self.plane.generate_clusters(peripherals_list=self.peripherals,
+                                                max_distance_between_point_and_centroid=maximum_cluster_radius)
+
+        # calculate the percentage threshold for each peripheral and assign it to the peripheral
+        for peripheral in self.peripherals:
+            peripheral.set_charge_threshold(charge_percentage_threshold)
+
+        # instantiate the charging queue. It is initially empty but will be filled with any peripherals below threshold.
+        charging_queue = deque()
+
+        while self.running_sim:
+            # go through the peripherals. If any are below the threshold, they are placed into a queue.
+            for peripheral in self.peripherals:
+                if peripheral.current_charge <= peripheral.charge_threshold and peripheral not in charging_queue:
+                    charging_queue.append(peripheral)
+
+            # Charge next cluster in the queue and remove all corresponding peripherals from the queue
+            if len(charging_queue) > 0:
+                next_in_line = charging_queue.popleft()
+                cluster_to_charge = next_in_line.cluster
+
+                # assume that it takes 1 point of energy per unit traveled
+                travel_energy_used_this_cycle, transfer_energy_used_this_cycle = \
+                    charger.charge_cluster(cluster_to_charge)
+
+                # remove all nodes in the cluster from the queue
+                charging_queue = deque(peripheral for peripheral in charging_queue if peripheral not in
+                                       cluster_to_charge.peripheral_list)
+
+                # update energy usage for analytics
+                self.travel_energy_used += travel_energy_used_this_cycle
+                self.transfer_energy_used += transfer_energy_used_this_cycle
+                self.total_energy_used += (transfer_energy_used_this_cycle + travel_energy_used_this_cycle)
+
+            # If no peripherals are below the threshold, we wait one time unit (decrement all by 1)
+            else:
+                for peripheral in self.peripherals:
+                    peripheral.current_charge -= 1
+
+        # run analytics
+        simulation.run_analytics_on_simulation()
