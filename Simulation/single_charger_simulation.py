@@ -200,5 +200,9 @@ class SingleChargerSim:
                 self.running_sim = False
                 break
 
-        # run analytics
-        simulation.run_analytics_on_simulation()
+        # record energy used
+        simulation.total_energy_used = self.total_energy_used
+        simulation.transfer_energy_used = self.transfer_energy_used
+        simulation.travel_energy_used = self.travel_energy_used
+
+        return simulation
