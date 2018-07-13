@@ -1,5 +1,6 @@
 from random import randint
 from itertools import cycle
+from collections import deque
 
 from Models.plane_model import *
 from Services import simulation_services
@@ -62,6 +63,7 @@ class MultiChargerSim:
                                              current_charge=60)
             cluster.set_dedicated_charger(dedicated_charger)
             dedicated_charger_list.append(dedicated_charger)
+            self.peripherals.append(dedicated_charger)
 
         # grab the shortest hamiltonian path through the clusters if we need it
         length_of_path_through_clusters, shortest_path_through_clusters = \
@@ -125,6 +127,121 @@ class MultiChargerSim:
 
         # record energy used
         # peripherals are still correctly tracked here
+        simulation.total_energy_used = self.total_energy_used
+        simulation.transfer_energy_used = self.transfer_energy_used
+        simulation.travel_energy_used = self.travel_energy_used
+
+        return simulation
+
+    def multi_charger_simulation_experimental_with_communication(self, charge_percentage_threshold):
+        # add a single master charging station and master charging node
+        charging_station = ChargingStation(MultiChargerSim.LOCATION_OF_CHARGING_STATION[0],
+                                           MultiChargerSim.LOCATION_OF_CHARGING_STATION[1], self.plane)
+        charger = ChargingNode(MultiChargerSim.LOCATION_OF_CHARGING_STATION[0],
+                               MultiChargerSim.LOCATION_OF_CHARGING_STATION[1] + 1, self.plane,
+                               charge_capacity=80, current_charge=80)
+
+        # add a series of peripherals at random locations
+        while self.plane.get_number_of_peripherals() < MultiChargerSim.NUMBER_OF_PERIPHERALS:
+            try:
+                capacity = randint(10, 30)
+                self.peripherals.append(Peripheral(randint(1, 20), randint(2, 20), self.plane, charge_capacity=capacity,
+                                                   current_charge=capacity))
+            # IndexError indicates that the location is occupied. Just allow and try again
+            except IndexError:
+                pass
+
+        simulation = Simulation(self.peripherals)
+
+        # generate clusters
+        maximum_cluster_radius = 5
+        clusters = self.plane.generate_clusters(peripherals_list=self.peripherals,
+                                                max_distance_between_point_and_centroid=maximum_cluster_radius)
+
+        # instantiate a dedicated charger for each cluster
+        dedicated_charger_list = []
+        for cluster in clusters:
+            dedicated_charger = ChargingNode(plane=self.plane, x_location=cluster.x_location,
+                                             y_location=cluster.y_location, charge_capacity=60,
+                                             current_charge=60)
+            cluster.set_dedicated_charger(dedicated_charger)
+            dedicated_charger_list.append(dedicated_charger)
+            self.peripherals.append(dedicated_charger)
+
+        # set threshold for both chargers and peripherals
+        for peripheral in self.peripherals:
+            peripheral.set_charge_threshold(charge_percentage_threshold)
+
+        # instantiate the charging queue. It is initially empty but will be filled with any peripherals below threshold.
+        charging_queue = deque()
+
+        while self.running_sim:
+            # we assume that dedicated chargers all start with full power
+            # we check if any DEDICATED CHARGER is below the threshold
+            for dedicated_charger in dedicated_charger_list:
+                if dedicated_charger.current_charge <= dedicated_charger.charge_threshold and \
+                        dedicated_charger not in charging_queue:
+                    charging_queue.append(dedicated_charger)
+
+            # check if the queue is empty. If it is, decrement everything by 1.
+            if len(charging_queue) > 0:
+                dedicated_charger = charging_queue.popleft()
+                charge_needed = dedicated_charger.get_charge_needed()
+                distance_to_travel = 2 * simulation_services.get_distance_between(charger.get_location(),
+                                                                                  dedicated_charger.get_location())
+                # decrement energy of all peripherals
+                for p in self.peripherals:
+                    p.current_charge -= distance_to_travel * MultiChargerSim.PERIPHERAL_ENERGY_LOSS_MULTIPLIER
+
+                charger.current_charge -= distance_to_travel
+
+                self.travel_energy_used += distance_to_travel
+                self.total_energy_used += distance_to_travel
+                charge_available = charger.current_charge
+
+                # charge the dedicated charger either to full, or as much as possible
+                amount_to_charge = min(charge_needed, charge_available)
+                charger.charge_peripheral(dedicated_charger, amount_to_charge)
+
+                # at this step, we cycle through each cluster and see if the dedicated charger gets activated
+                for cluster in clusters:
+                    for peripheral in cluster.peripheral_list:
+                        if peripheral.current_charge <= peripheral.charge_threshold:
+                            # dedicated charger now charges the cluster
+                            for peripheral_index in cluster.shortest_path_through_cluster:
+                                peripheral = cluster.peripheral_list[peripheral_index]
+                                amount_of_charge_needed = peripheral.charge_capacity - peripheral.current_charge
+                                charge_available = dedicated_charger.current_charge
+                                amount_to_charge = min(amount_of_charge_needed, charge_available)
+                                dedicated_charger.charge_peripheral(peripheral=peripheral, amount=amount_to_charge)
+                                self.transfer_energy_used += amount_to_charge
+                                self.total_energy_used += amount_to_charge
+
+                # recharge the charger, decrement the amount of charge held by all devices
+                amount_needed_to_replenish = charger.charge_capacity - charger.current_charge
+                charger.charge_self()
+                for peripheral in self.peripherals:
+                    peripheral.current_charge -= (amount_needed_to_replenish *
+                                                  MultiChargerSim.PERIPHERAL_ENERGY_LOSS_MULTIPLIER)
+
+            else:
+                for peripheral in self.peripherals:
+                    peripheral.current_charge -= 1
+                for dedicated_charger in dedicated_charger_list:
+                    dedicated_charger.current_charge -= 1
+
+            self.cycles += 1
+            if self.cycles == 15 * len(clusters):
+                # shallow copy of the list at 15 minutes
+                simulation.peripheral_list_after_15_cycles = self.peripherals[:]
+                simulation.calculate_average_charge_at_15_cycles()
+
+            # stop running the sim at 5 minutes
+            if datetime.datetime.now() - self.start_time >= datetime.timedelta(minutes=5):
+                self.running_sim = False
+                break
+
+        # record energy used
         simulation.total_energy_used = self.total_energy_used
         simulation.transfer_energy_used = self.transfer_energy_used
         simulation.travel_energy_used = self.travel_energy_used
