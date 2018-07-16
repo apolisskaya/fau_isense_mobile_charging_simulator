@@ -227,8 +227,6 @@ class MultiChargerSim:
             else:
                 for peripheral in self.peripherals:
                     peripheral.current_charge -= 1
-                for dedicated_charger in dedicated_charger_list:
-                    dedicated_charger.current_charge -= 1
 
             self.cycles += 1
             if self.cycles == 15 * len(clusters):
